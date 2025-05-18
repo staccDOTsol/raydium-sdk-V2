@@ -596,6 +596,12 @@ export class Clmm extends ModuleBase {
       txVersion,
       feePayer,
     } = props;
+
+    // Validate the position object to prevent buffer access errors
+    if (!ownerPosition || !ownerPosition.poolId || !ownerPosition.tickLower || !ownerPosition.tickUpper) {
+      throw new Error("Invalid or incomplete position data. Position must contain poolId, tickLower, and tickUpper.");
+    }
+
     if (this.scope.availability.removeConcentratedPosition === false)
       this.logAndCreateError("remove position feature disabled in your region");
     const txBuilder = this.createTxBuilder(feePayer);
@@ -603,41 +609,57 @@ export class Clmm extends ModuleBase {
     const mintAUseSOLBalance = ownerInfo.useSOLBalance && poolInfo.mintA.address === WSOLMint.toString();
     const mintBUseSOLBalance = ownerInfo.useSOLBalance && poolInfo.mintB.address === WSOLMint.toString();
 
+    // First validate poolInfo to ensure we have valid mints
+    if (!poolInfo.mintA?.address || !poolInfo.mintB?.address) {
+      throw new Error("Invalid pool info: missing mint addresses");
+    }
+
     let ownerTokenAccountA: PublicKey | undefined = undefined;
     let ownerTokenAccountB: PublicKey | undefined = undefined;
-    const { account: _ownerTokenAccountA, instructionParams: accountAInstructions } =
-      await this.scope.account.getOrCreateTokenAccount({
-        tokenProgram: poolInfo.mintA.programId,
-        mint: new PublicKey(poolInfo.mintA.address),
-        notUseTokenAccount: mintAUseSOLBalance,
-        owner: this.scope.ownerPubKey,
-        createInfo: {
-          payer: this.scope.ownerPubKey,
-          amount: 0,
-        },
-        skipCloseAccount: !mintAUseSOLBalance,
-        associatedOnly: mintAUseSOLBalance ? false : associatedOnly,
-        checkCreateATAOwner,
-      });
-    ownerTokenAccountA = _ownerTokenAccountA;
-    accountAInstructions && txBuilder.addInstruction(accountAInstructions);
+    
+    try {
+      const { account: _ownerTokenAccountA, instructionParams: accountAInstructions } =
+        await this.scope.account.getOrCreateTokenAccount({
+          tokenProgram: poolInfo.mintA.programId,
+          mint: new PublicKey(poolInfo.mintA.address),
+          notUseTokenAccount: mintAUseSOLBalance,
+          owner: this.scope.ownerPubKey,
+          createInfo: {
+            payer: this.scope.ownerPubKey,
+            amount: 0,
+          },
+          skipCloseAccount: !mintAUseSOLBalance,
+          associatedOnly: mintAUseSOLBalance ? false : associatedOnly,
+          checkCreateATAOwner,
+        });
+      ownerTokenAccountA = _ownerTokenAccountA;
+      accountAInstructions && txBuilder.addInstruction(accountAInstructions);
+    } catch (error) {
+      console.error("Error getting token account A:", error);
+      throw new Error(`Failed to get or create token account for ${poolInfo.mintA.address}: ${error instanceof Error ? error.message : String(error)}`);
+    }
 
-    const { account: _ownerTokenAccountB, instructionParams: accountBInstructions } =
-      await this.scope.account.getOrCreateTokenAccount({
-        tokenProgram: poolInfo.mintB.programId,
-        mint: new PublicKey(poolInfo.mintB.address),
-        notUseTokenAccount: mintBUseSOLBalance,
-        owner: this.scope.ownerPubKey,
-        createInfo: {
-          payer: this.scope.ownerPubKey,
-          amount: 0,
-        },
-        skipCloseAccount: !mintBUseSOLBalance,
-        associatedOnly: mintBUseSOLBalance ? false : associatedOnly,
-        checkCreateATAOwner,
-      });
-    ownerTokenAccountB = _ownerTokenAccountB;
-    accountBInstructions && txBuilder.addInstruction(accountBInstructions);
+    try {
+      const { account: _ownerTokenAccountB, instructionParams: accountBInstructions } =
+        await this.scope.account.getOrCreateTokenAccount({
+          tokenProgram: poolInfo.mintB.programId,
+          mint: new PublicKey(poolInfo.mintB.address),
+          notUseTokenAccount: mintBUseSOLBalance,
+          owner: this.scope.ownerPubKey,
+          createInfo: {
+            payer: this.scope.ownerPubKey,
+            amount: 0,
+          },
+          skipCloseAccount: !mintBUseSOLBalance,
+          associatedOnly: mintBUseSOLBalance ? false : associatedOnly,
+          checkCreateATAOwner,
+        });
+      ownerTokenAccountB = _ownerTokenAccountB;
+      accountBInstructions && txBuilder.addInstruction(accountBInstructions);
+    } catch (error) {
+      console.error("Error getting token account B:", error);
+      throw new Error(`Failed to get or create token account for ${poolInfo.mintB.address}: ${error instanceof Error ? error.message : String(error)}`);
+    }
 
     const rewardAccounts: PublicKey[] = [];
     for (const itemReward of poolInfo.rewardDefaultInfos) {
@@ -1259,7 +1281,7 @@ export class Clmm extends ModuleBase {
     txVersion,
     feePayer,
   }: CollectRewardParams<T>): Promise<MakeTxData<{ address: Record<string, PublicKey> }>> {
-    const rewardInfo = poolInfo!.rewardDefaultInfos.find((i) => i.mint.address === rewardMint.toString());
+    const rewardInfo = poolInfo!.rewardDefaultInfos?.find((i) => i.mint.address === rewardMint.toString());
     if (!rewardInfo) this.logAndCreateError("reward mint error", "not found reward mint", rewardMint);
 
     const txBuilder = this.createTxBuilder(feePayer);
@@ -1315,7 +1337,7 @@ export class Clmm extends ModuleBase {
     let address: Record<string, PublicKey> = {};
 
     for (const rewardMint of rewardMints) {
-      const rewardInfo = poolInfo!.rewardDefaultInfos.find((i) => i.mint.address === rewardMint.toString());
+      const rewardInfo = poolInfo!.rewardDefaultInfos?.find((i) => i.mint.address === rewardMint.toString());
       if (!rewardInfo) {
         this.logAndCreateError("reward mint error", "not found reward mint", rewardMint);
         continue;

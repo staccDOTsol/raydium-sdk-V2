@@ -219,6 +219,12 @@ export default class CpmmModule extends ModuleBase {
       address: rpcData.mintLp.toBase58(),
       decimals: rpcData.lpDecimals,
       programId: TOKEN_PROGRAM_ID.toBase58(),
+      symbol: "LP",
+      name: "LP Token",
+      logoURI: "",
+      chainId: 101,
+      tags: [],
+      extensions: {},
     });
 
     const configInfo = {
@@ -573,8 +579,8 @@ export default class CpmmModule extends ModuleBase {
 
     const epochInfo = await this.scope.fetchEpochInfo();
     const [mintAAmountFee, mintBAmountFee] = [
-      getTransferAmountFeeV2(amountMintA, poolInfo.mintA.extensions.feeConfig, epochInfo, false),
-      getTransferAmountFeeV2(amountMintB, poolInfo.mintB.extensions.feeConfig, epochInfo, false),
+      getTransferAmountFeeV2(amountMintA, epochInfo, false),
+      getTransferAmountFeeV2(amountMintB, epochInfo, false),
     ];
 
     const { account } = this.scope;
@@ -1017,7 +1023,6 @@ export default class CpmmModule extends ModuleBase {
     );
     const inputAmountFee = getTransferAmountFeeV2(
       inputAmount,
-      poolInfo[baseIn ? "mintA" : "mintB"].extensions.feeConfig,
       epochInfo,
       false,
     );
@@ -1059,7 +1064,6 @@ export default class CpmmModule extends ModuleBase {
       });
       anotherAmountFee = getTransferAmountFeeV2(
         lpAmountData[baseIn ? "amountB" : "amountA"],
-        poolInfo[baseIn ? "mintB" : "mintA"].extensions.feeConfig,
         epochInfo,
         true,
       );
@@ -1069,13 +1073,11 @@ export default class CpmmModule extends ModuleBase {
     const _slippageMin = new Percent(new BN(1)).sub(slippage);
     const slippageAdjustedAmount = getTransferAmountFeeV2(
       _slippage.mul(anotherAmountFee.amount.sub(anotherAmountFee.fee ?? new BN(0))).quotient,
-      poolInfo[baseIn ? "mintB" : "mintA"].extensions.feeConfig,
       epochInfo,
       true,
     );
     const slippageAdjustedMinAmount = getTransferAmountFeeV2(
       _slippageMin.mul(anotherAmountFee.amount.sub(anotherAmountFee.fee ?? new BN(0))).quotient,
-      poolInfo[baseIn ? "mintB" : "mintA"].extensions.feeConfig,
       epochInfo,
       true,
     );

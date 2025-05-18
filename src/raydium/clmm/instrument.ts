@@ -1572,7 +1572,7 @@ export class ClmmInstrument {
       ownerRewardVault: PublicKey;
       rewardMint: PublicKey;
     }[] = [];
-    for (let i = 0; i < poolInfo.rewardDefaultInfos.length; i++) {
+    for (let i = 0; i < poolInfo.rewardDefaultInfos?.length; i++) {
       rewardAccounts.push({
         poolRewardVault: new PublicKey(poolKeys.rewardInfos[i].vault),
         ownerRewardVault: ownerInfo.rewardAccounts[i],
@@ -2015,7 +2015,7 @@ export class ClmmInstrument {
     let rewardIndex: number | undefined;
     let rewardVault: PublicKey | undefined;
     let rewardMint: PublicKey | undefined;
-    for (let index = 0; index < poolInfo.rewardDefaultInfos.length; index++)
+    for (let index = 0; index < poolInfo.rewardDefaultInfos?.length; index++)
       if (poolInfo.rewardDefaultInfos[index].mint.address === rewardInfo.mint.toString()) {
         rewardIndex = index;
         rewardVault = new PublicKey(poolKeys.rewardInfos[index].vault);
@@ -2112,7 +2112,7 @@ export class ClmmInstrument {
     const [programId, id] = [new PublicKey(poolInfo.programId), new PublicKey(poolInfo.id)];
     let rewardIndex: number | undefined;
     let rewardVault: PublicKey | undefined;
-    for (let index = 0; index < poolInfo.rewardDefaultInfos.length; index++)
+    for (let index = 0; index < poolInfo.rewardDefaultInfos?.length; index++)
       if (poolInfo.rewardDefaultInfos[index].mint.address === rewardMint.toString()) {
         rewardIndex = index;
         rewardVault = new PublicKey(poolKeys.rewardInfos[index].vault);

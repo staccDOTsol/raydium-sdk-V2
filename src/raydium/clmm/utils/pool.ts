@@ -639,10 +639,6 @@ export class PoolUtils {
   }): ReturnTypeComputeAmountOut {
     let sqrtPriceLimitX64: BN;
     const isBaseIn = baseMint.toBase58() === poolInfo.mintA.address;
-    const [baseFeeConfig, outFeeConfig] = isBaseIn
-      ? [poolInfo.mintA.extensions.feeConfig, poolInfo.mintB.extensions.feeConfig]
-      : [poolInfo.mintB.extensions.feeConfig, poolInfo.mintA.extensions.feeConfig];
-
     if (priceLimit.equals(new Decimal(0))) {
       sqrtPriceLimitX64 = isBaseIn ? MIN_SQRT_PRICE_X64.add(new BN(1)) : MAX_SQRT_PRICE_X64.sub(new BN(1));
     } else {
@@ -653,7 +649,7 @@ export class PoolUtils {
       );
     }
 
-    const realAmountIn = getTransferAmountFeeV2(amountIn, baseFeeConfig, epochInfo, false);
+    const realAmountIn = getTransferAmountFeeV2(amountIn, epochInfo, false);
 
     const {
       allTrade,
@@ -670,7 +666,7 @@ export class PoolUtils {
       catchLiquidityInsufficient,
     );
 
-    const amountOut = getTransferAmountFeeV2(_expectedAmountOut, outFeeConfig, epochInfo, false);
+    const amountOut = getTransferAmountFeeV2(_expectedAmountOut, epochInfo, false);
 
     const _executionPrice = SqrtPriceMath.sqrtPriceX64ToPrice(
       _executionPriceX64,
@@ -682,7 +678,7 @@ export class PoolUtils {
     const _minAmountOut = _expectedAmountOut
       .mul(new BN(Math.floor((1 - slippage) * 10000000000)))
       .div(new BN(10000000000));
-    const minAmountOut = getTransferAmountFeeV2(_minAmountOut, outFeeConfig, epochInfo, false);
+    const minAmountOut = getTransferAmountFeeV2(_minAmountOut, epochInfo, false);
 
     const poolPrice = isBaseIn ? poolInfo.currentPrice : new Decimal(1).div(poolInfo.currentPrice);
 
@@ -828,10 +824,7 @@ export class PoolUtils {
     priceLimit?: Decimal;
   }): ReturnTypeComputeAmountOutBaseOut {
     const isBaseIn = baseMint.toBase58() === poolInfo.mintA.address;
-    const feeConfigs = {
-      [poolInfo.mintA.address]: poolInfo.mintA.extensions.feeConfig,
-      [poolInfo.mintB.address]: poolInfo.mintB.extensions.feeConfig,
-    };
+ 
 
     let sqrtPriceLimitX64: BN;
     if (priceLimit.equals(new Decimal(0))) {
@@ -844,7 +837,7 @@ export class PoolUtils {
       );
     }
 
-    const realAmountOut = getTransferAmountFeeV2(amountOut, feeConfigs[baseMint.toString()], epochInfo, true);
+    const realAmountOut = getTransferAmountFeeV2(amountOut, epochInfo, true);
 
     const {
       expectedAmountIn: _expectedAmountIn,
@@ -861,7 +854,7 @@ export class PoolUtils {
 
     const inMint = isBaseIn ? poolInfo.mintB.address : poolInfo.mintA.address;
 
-    const amountIn = getTransferAmountFeeV2(_expectedAmountIn, feeConfigs[inMint], epochInfo, false);
+    const amountIn = getTransferAmountFeeV2(_expectedAmountIn, epochInfo, false);
     // const amountIn = getTransferAmountFee(
     //   _expectedAmountIn,
     //   token2022Infos[inMint.toString()]?.feeConfig,
@@ -885,7 +878,7 @@ export class PoolUtils {
     //   epochInfo,
     //   true,
     // );
-    const maxAmountIn = getTransferAmountFeeV2(_maxAmountIn, feeConfigs[inMint], epochInfo, true);
+    const maxAmountIn = getTransferAmountFeeV2(_maxAmountIn, epochInfo, true);
 
     const poolPrice = isBaseIn ? poolInfo.currentPrice : new Decimal(1).div(poolInfo.currentPrice);
 
@@ -1043,7 +1036,7 @@ export class PoolUtils {
 
     const SECONDS_PER_YEAR = 3600 * 24 * 365;
 
-    const rewardsApr = poolInfo.rewardDefaultInfos.map((i) => {
+    const rewardsApr = poolInfo.rewardDefaultInfos?.map((i) => {
       const iDecimal = i.mint.decimals;
       const iPrice = mintPrice[i.mint.address];
 
@@ -1103,7 +1096,6 @@ export class PoolUtils {
     // const coefficient = add ? 1 - slippage : 1 + slippage;
     const addFeeAmount = getTransferAmountFeeV2(
       amount,
-      poolInfo[inputA ? "mintA" : "mintB"].extensions?.feeConfig,
       epochInfo,
       !amountHasFee,
     );
@@ -1175,19 +1167,17 @@ export class PoolUtils {
       add,
     );
     const [amountA, amountB] = [
-      getTransferAmountFeeV2(amounts.amountA, poolInfo.mintA.extensions?.feeConfig, epochInfo, true),
-      getTransferAmountFeeV2(amounts.amountB, poolInfo.mintB.extensions?.feeConfig, epochInfo, true),
+      getTransferAmountFeeV2(amounts.amountA, epochInfo, true),
+      getTransferAmountFeeV2(amounts.amountB, epochInfo, true),
     ];
     const [amountSlippageA, amountSlippageB] = [
       getTransferAmountFeeV2(
         amounts.amountA.muln(coefficientRe),
-        poolInfo.mintA.extensions?.feeConfig,
         epochInfo,
         true,
       ),
       getTransferAmountFeeV2(
         amounts.amountB.muln(coefficientRe),
-        poolInfo.mintB.extensions?.feeConfig,
         epochInfo,
         true,
       ),
@@ -1307,8 +1297,8 @@ export function getLiquidityFromAmounts({
   const sqrtPriceX64B = SqrtPriceMath.getSqrtPriceX64FromTick(_tickUpper);
 
   const [amountFeeA, amountFeeB] = [
-    getTransferAmountFeeV2(_amountA, poolInfo.mintA.extensions?.feeConfig, epochInfo, !amountHasFee),
-    getTransferAmountFeeV2(_amountB, poolInfo.mintB.extensions?.feeConfig, epochInfo, !amountHasFee),
+    getTransferAmountFeeV2(_amountA, epochInfo, !amountHasFee),
+    getTransferAmountFeeV2(_amountB, epochInfo, !amountHasFee),
   ];
 
   const liquidity = LiquidityMath.getLiquidityFromTokenAmounts(
